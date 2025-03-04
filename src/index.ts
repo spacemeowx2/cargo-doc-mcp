@@ -31,24 +31,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
       {
-        name: "check_doc",
-        description: "Check if documentation is built for a specific crate",
-        inputSchema: {
-          type: "object",
-          properties: {
-            project_path: {
-              type: "string",
-              description: "Path to the Rust project",
-            },
-            crate_name: {
-              type: "string",
-              description: "Name of the crate to check",
-            },
-          },
-          required: ["project_path", "crate_name"],
-        },
-      },
-      {
         name: "build_doc",
         description: "Build documentation for a specific crate",
         inputSchema: {
@@ -107,26 +89,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     switch (request.params.name) {
-      case "check_doc": {
-        const { project_path, crate_name } = request.params.arguments as {
-          project_path: string;
-          crate_name: string;
-        };
-
-        const isBuilt = await docManager.checkDoc(project_path, crate_name);
-
-        return {
-          content: [
-            {
-              type: "text",
-              text: isBuilt
-                ? `Documentation for ${crate_name} is built.`
-                : `Documentation for ${crate_name} is not built.`,
-            },
-          ],
-        };
-      }
-
       case "build_doc": {
         const { project_path, crate_name, no_deps } = request.params
           .arguments as {
