@@ -1,6 +1,6 @@
 import { execa } from 'execa';
 import { DocCache } from './cache.js';
-import { DocError, DocErrorCode, SearchOptions, SearchResult } from './types.js';
+import { DocError, DocErrorCode, SearchOptions, SearchResult, SymbolInfo, SymbolType } from './types.js';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -225,6 +225,57 @@ export class DocManager {
             throw new DocError(
                 DocErrorCode.SEARCH_FAILED,
                 'Failed to search documentation',
+                error
+            );
+        }
+    }
+
+    /**
+     * List all symbols in a crate's documentation
+     */
+    public async listSymbols(projectPath: string, crateName: string): Promise<SymbolInfo[]> {
+        const isBuilt = await this.checkDoc(projectPath, crateName);
+        if (!isBuilt) {
+            throw new DocError(
+                DocErrorCode.SEARCH_FAILED,
+                'Documentation not built. Please build the documentation first.'
+            );
+        }
+
+        const cached = await this.cache.get(projectPath, crateName);
+        if (!cached) {
+            throw new DocError(
+                DocErrorCode.CACHE_ERROR,
+                'Cache error: Documentation entry not found'
+            );
+        }
+
+        try {
+            const { docPath } = cached;
+            const docDir = path.dirname(docPath);
+            const files = await fs.readdir(docDir);
+            const symbols: SymbolInfo[] = [];
+
+            for (const file of files) {
+                if (file.endsWith('.html') && file !== 'index.html') {
+                    const match = file.match(/^(struct|enum|trait|fn|const|type|macro|mod)\.(.+)\.html$/);
+                    if (match) {
+                        const [, type, name] = match;
+                        symbols.push({
+                            name: name.replace(/-/g, '::'),
+                            type: type as SymbolType,
+                            path: `${crateName}::${name.replace(/-/g, '::')}`,
+                            url: `file://${path.join(docDir, file)}`
+                        });
+                    }
+                }
+            }
+
+            return symbols.sort((a, b) => a.path.localeCompare(b.path));
+        } catch (error) {
+            throw new DocError(
+                DocErrorCode.SEARCH_FAILED,
+                'Failed to list symbols',
                 error
             );
         }

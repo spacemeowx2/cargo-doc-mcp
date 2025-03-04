@@ -54,6 +54,24 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         },
       },
       {
+        name: "list_symbols",
+        description: "List all symbols (structs, enums, traits, etc.) in a crate's documentation",
+        inputSchema: {
+          type: "object",
+          properties: {
+            project_path: {
+              type: "string",
+              description: "Path to the Rust project",
+            },
+            crate_name: {
+              type: "string",
+              description: "Name of the crate to list symbols for",
+            },
+          },
+          required: ["project_path", "crate_name"],
+        },
+      },
+      {
         name: "search_doc",
         description: "Search within a crate's documentation",
         inputSchema: {
@@ -104,6 +122,30 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: "text",
               text: `Documentation built successfully. Output: ${docPath}`,
+            },
+          ],
+        };
+      }
+
+      case "list_symbols": {
+        const { project_path, crate_name } = request.params.arguments as {
+          project_path: string;
+          crate_name: string;
+        };
+
+        const symbols = await docManager.listSymbols(project_path, crate_name);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Found ${symbols.length} symbols:\n`,
+            },
+            {
+              type: "text",
+              text: symbols
+                .map((sym) => `${sym.type} ${sym.path}\n  URL: ${sym.url}`)
+                .join("\n"),
             },
           ],
         };

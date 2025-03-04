@@ -34,6 +34,30 @@ export interface SearchResult {
 }
 
 /**
+ * Symbol type in Rust documentation
+ */
+export enum SymbolType {
+    STRUCT = 'struct',
+    ENUM = 'enum',
+    TRAIT = 'trait',
+    FUNCTION = 'fn',
+    CONST = 'const',
+    TYPE = 'type',
+    MACRO = 'macro',
+    MODULE = 'mod',
+}
+
+/**
+ * Symbol information from documentation
+ */
+export interface SymbolInfo {
+    name: string;
+    type: SymbolType;
+    path: string;
+    url: string;
+}
+
+/**
  * Error codes for documentation operations
  */
 export enum DocErrorCode {
