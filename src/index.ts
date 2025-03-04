@@ -5,11 +5,16 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
+  ListResourcesRequestSchema,
+  ListResourceTemplatesRequestSchema,
+  ReadResourceRequestSchema,
   ErrorCode,
   McpError,
 } from "@modelcontextprotocol/sdk/types.js";
 import { DocManager } from "./doc-manager.js";
 import { DocError } from "./types.js";
+import path from "path";
+import fs from "fs/promises";
 
 const docManager = new DocManager();
 
@@ -25,6 +30,72 @@ const server = new Server(
     },
   }
 );
+
+// List available resource templates
+server.setRequestHandler(ListResourceTemplatesRequestSchema, async () => ({
+  resourceTemplates: [
+    {
+      uriTemplate: "rustdoc://{crate}/{file}",
+      name: "Rust documentation file",
+      mimeType: "text/html",
+      description: "Access generated Rust documentation files",
+    },
+  ],
+}));
+
+// Read resource content
+server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+  const match = request.params.uri.match(/^rustdoc:\/\/([^\/]+)\/(.+)$/);
+  if (!match) {
+    throw new McpError(
+      ErrorCode.InvalidRequest,
+      `Invalid rustdoc URI format: ${request.params.uri}`
+    );
+  }
+
+  const [, crateName, fileName] = match;
+
+  try {
+    // 通过缓存获取文档路径
+    const cached = await docManager.getDocPath(crateName);
+    if (!cached || !cached.isBuilt) {
+      throw new McpError(
+        ErrorCode.InvalidRequest,
+        `Documentation for crate ${crateName} is not built`
+      );
+    }
+
+    const docDir = path.dirname(cached.docPath);
+    const filePath = path.join(docDir, fileName);
+
+    try {
+      const content = await fs.readFile(filePath, "utf-8");
+      return {
+        contents: [
+          {
+            uri: request.params.uri,
+            mimeType: "text/html",
+            text: content,
+          },
+        ],
+      };
+    } catch (error) {
+      throw new McpError(
+        ErrorCode.InvalidRequest,
+        `File not found: ${fileName} in crate ${crateName}`
+      );
+    }
+  } catch (error) {
+    if (error instanceof McpError) {
+      throw error;
+    }
+    throw new McpError(
+      ErrorCode.InternalError,
+      "Failed to read documentation file",
+      error
+    );
+  }
+});
 
 // List available tools
 server.setRequestHandler(ListToolsRequestSchema, async () => {

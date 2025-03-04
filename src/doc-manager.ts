@@ -22,6 +22,28 @@ export class DocManager {
     }
 
     /**
+     * Get documentation path for a crate
+     */
+    public async getDocPath(crateName: string): Promise<{ docPath: string; isBuilt: boolean } | null> {
+        const cached = await this.cache.get('', crateName);
+        if (!cached) {
+            return null;
+        }
+        return {
+            docPath: cached.docPath,
+            isBuilt: cached.isBuilt
+        };
+    }
+
+    /**
+     * Create a rustdoc URL from file path and crate name
+     */
+    private createRustdocUrl(filePath: string, crateName: string): string {
+        const fileName = path.basename(filePath);
+        return `rustdoc://${crateName}/${fileName}`;
+    }
+
+    /**
      * Verify if a project path is valid
      */
     private async verifyProjectPath(projectPath: string): Promise<void> {
@@ -184,7 +206,7 @@ export class DocManager {
                     if (match.type === 'match') {
                         const result: SearchResult = {
                             title: path.basename(match.data.path.text, '.html'),
-                            url: `file://${match.data.path.text}`,
+                            url: this.createRustdocUrl(match.data.path.text, crateName),
                             snippet: match.data.lines.text
                         };
                         results.push(result);
@@ -207,7 +229,7 @@ export class DocManager {
                         if (content.includes(query)) {
                             const result: SearchResult = {
                                 title: path.basename(file, '.html'),
-                                url: `file://${path.join(docDir, file)}`,
+                                url: this.createRustdocUrl(path.join(docDir, file), crateName),
                                 snippet: '...' // Simple fallback without proper context
                             };
                             results.push(result);
@@ -265,7 +287,7 @@ export class DocManager {
                             name: name.replace(/-/g, '::'),
                             type: type as SymbolType,
                             path: `${crateName}::${name.replace(/-/g, '::')}`,
-                            url: `file://${path.join(docDir, file)}`
+                            url: this.createRustdocUrl(path.join(docDir, file), crateName)
                         });
                     }
                 }
