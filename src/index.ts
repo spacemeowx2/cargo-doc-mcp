@@ -139,12 +139,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               type: "string",
               description: "Search query (keyword or symbol)",
             },
-            limit: {
-              type: "number",
-              description: "Maximum number of results to return",
-              minimum: 1,
-              default: 10,
-            },
           },
           required: ["project_path", "crate_name", "query"],
         },
@@ -200,16 +194,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "search_doc": {
-        const { project_path, crate_name, query, limit } = request.params
+        const { project_path, crate_name, query } = request.params
           .arguments as {
             project_path: string;
             crate_name: string;
             query: string;
-            limit?: number;
           };
 
         const results = await docManager.searchDoc(project_path, crate_name, query, {
-          limit,
+          limit: 50,
         });
 
         return {
