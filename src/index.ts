@@ -36,7 +36,7 @@ server.setRequestHandler(ListResourceTemplatesRequestSchema, async () => ({
     {
       uriTemplate: "rustdoc://{path}",
       name: "Rust documentation file",
-      mimeType: "text/html",
+      mimeType: "text/markdown",
       description: "Access generated Rust documentation files using a direct file path.",
     },
   ],
@@ -87,7 +87,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     tools: [
       {
         name: "get_crate_doc",
-        description: "Get crate's main documentation page for understanding overall concepts and usage",
+        description: "Get crate's main documentation page. Useful for unresolved imports (e.g. use get_crate_doc when seeing 'unresolved import tokio::sync') or understanding crate features.",
         inputSchema: {
           type: "object",
           properties: {
@@ -105,7 +105,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "list_symbols",
-        description: "List all symbols (structs, enums, traits, etc.) in a crate's documentation",
+        description: "List all symbols in a crate. Use when implementing traits or exploring available types. Shows structs, enums, traits with their paths.",
         inputSchema: {
           type: "object",
           properties: {
@@ -123,7 +123,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "search_doc",
-        description: "Search within a crate's documentation",
+        description: "Search crate docs for specific features, error messages, or usage examples. Helps debug compilation issues or learn new APIs.",
         inputSchema: {
           type: "object",
           properties: {
