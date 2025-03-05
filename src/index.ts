@@ -239,7 +239,7 @@ async function main() {
     await docManager.initialize();
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    console.error("Docs.rs MCP server running on stdio");
+    console.error("cargo doc MCP server running on stdio");
   } catch (error) {
     console.error("Server initialization error:", error);
     process.exit(1);

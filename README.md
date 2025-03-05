@@ -1,4 +1,4 @@
-# Docs.rs MCP Server
+# cargo doc MCP Server
 
 A MCP server for managing Rust documentation through cargo doc commands. This server provides tools to check, build, and search Rust documentation locally.
 
@@ -29,7 +29,6 @@ A MCP server for managing Rust documentation through cargo doc commands. This se
 
 - Node.js 16 or later
 - Rust and Cargo installed
-- [Optional] ripgrep installed for faster documentation search
 
 ## Installation
 
@@ -100,19 +99,8 @@ const result = await claude.useMcpTool("docs-rs-mcp", "search_doc", {
   project_path: "/path/to/rust/project",
   crate_name: "my-crate",
   query: "HashMap",
-  limit: 5,
 });
 ```
-
-## Error Handling
-
-The server provides detailed error messages for common issues:
-
-- `INVALID_PATH`: Project path is invalid or Cargo.toml not found
-- `BUILD_FAILED`: Documentation build failed
-- `SEARCH_FAILED`: Search operation failed
-- `CACHE_ERROR`: Cache system error
-- `CARGO_ERROR`: Cargo command execution failed
 
 ## Debugging
 

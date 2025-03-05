@@ -1,7 +1,7 @@
 {
   "name": "docs-rs-mcp",
   "version": "0.1.0",
-  "description": "A MCP for docs.rs",
+  "description": "A MCP for cargo doc",
   "private": true,
   "type": "module",
   "bin": {
