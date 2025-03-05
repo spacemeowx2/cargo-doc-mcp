@@ -50,15 +50,7 @@ For development with auto-rebuild:
 pnpm run watch
 ```
 
-## Integration with Claude Desktop
-
-To use with Claude Desktop, add the server configuration:
-
-On MacOS:
-
-```bash
-vim ~/Library/Application\ Support/Claude/claude_desktop_config.json
-```
+## Usage
 
 Add the following configuration:
 
@@ -70,36 +62,6 @@ Add the following configuration:
     }
   }
 }
-```
-
-## Usage Examples
-
-1. Get crate documentation:
-
-```typescript
-const result = await claude.useMcpTool("docs-rs-mcp", "get_crate_doc", {
-  project_path: "/path/to/rust/project",
-  crate_name: "my-crate",
-});
-```
-
-2. List symbols in documentation:
-
-```typescript
-const result = await claude.useMcpTool("docs-rs-mcp", "list_symbols", {
-  project_path: "/path/to/rust/project",
-  crate_name: "my-crate",
-});
-```
-
-3. Search documentation:
-
-```typescript
-const result = await claude.useMcpTool("docs-rs-mcp", "search_doc", {
-  project_path: "/path/to/rust/project",
-  crate_name: "my-crate",
-  query: "HashMap",
-});
 ```
 
 ## Debugging
