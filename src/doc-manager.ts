@@ -3,6 +3,7 @@ import { DocCache } from './cache.js';
 import { DocError, DocErrorCode, SearchOptions, SearchResult, SymbolInfo, SymbolType } from './types.js';
 import fs from 'fs/promises';
 import path from 'path';
+import { RustdocUrl } from './url-utils.js';
 
 /**
  * Manages Rust documentation operations
@@ -24,8 +25,8 @@ export class DocManager {
     /**
      * Get documentation path for a crate
      */
-    public async getDocPath(crateName: string): Promise<{ docPath: string; isBuilt: boolean } | null> {
-        const cached = await this.cache.get('', crateName);
+    public async getDocPath(projectPath: string, crateName: string): Promise<{ docPath: string; isBuilt: boolean } | null> {
+        const cached = await this.cache.get(projectPath, crateName);
         if (!cached) {
             return null;
         }
@@ -33,14 +34,6 @@ export class DocManager {
             docPath: cached.docPath,
             isBuilt: cached.isBuilt
         };
-    }
-
-    /**
-     * Create a rustdoc URL from file path and crate name
-     */
-    private createRustdocUrl(filePath: string, crateName: string): string {
-        const fileName = path.basename(filePath);
-        return `rustdoc://${crateName}/${fileName}`;
     }
 
     /**
@@ -188,68 +181,31 @@ export class DocManager {
             );
         }
 
-        try {
-            const { docPath } = cached;
-            const docDir = path.dirname(docPath);
+        const { docPath } = cached;
+        const docDir = path.dirname(docPath);
 
-            // Use ripgrep if available for faster search
-            try {
-                const { stdout } = await execa('rg', ['--json', query], {
-                    cwd: docDir
-                });
+        const files = await fs.readdir(docDir);
+        const results: SearchResult[] = [];
 
-                const results: SearchResult[] = [];
-                const lines = stdout.split('\n').filter(Boolean);
+        for (const file of files) {
+            if (file.endsWith('.html')) {
+                const content = await fs.readFile(path.join(docDir, file), 'utf-8');
+                if (content.includes(query)) {
+                    const result: SearchResult = {
+                        title: path.basename(file, '.html'),
+                        url: RustdocUrl.create(path.join(docDir, file)),
+                        snippet: '...' // Simple fallback without proper context
+                    };
+                    results.push(result);
 
-                for (const line of lines) {
-                    const match = JSON.parse(line);
-                    if (match.type === 'match') {
-                        const result: SearchResult = {
-                            title: path.basename(match.data.path.text, '.html'),
-                            url: this.createRustdocUrl(match.data.path.text, crateName),
-                            snippet: match.data.lines.text
-                        };
-                        results.push(result);
-
-                        if (options.limit && results.length >= options.limit) {
-                            break;
-                        }
+                    if (options.limit && results.length >= options.limit) {
+                        break;
                     }
                 }
-
-                return results;
-            } catch (rgError) {
-                // Fallback to simple file search if ripgrep is not available
-                const files = await fs.readdir(docDir);
-                const results: SearchResult[] = [];
-
-                for (const file of files) {
-                    if (file.endsWith('.html')) {
-                        const content = await fs.readFile(path.join(docDir, file), 'utf-8');
-                        if (content.includes(query)) {
-                            const result: SearchResult = {
-                                title: path.basename(file, '.html'),
-                                url: this.createRustdocUrl(path.join(docDir, file), crateName),
-                                snippet: '...' // Simple fallback without proper context
-                            };
-                            results.push(result);
-
-                            if (options.limit && results.length >= options.limit) {
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                return results;
             }
-        } catch (error) {
-            throw new DocError(
-                DocErrorCode.SEARCH_FAILED,
-                'Failed to search documentation',
-                error
-            );
         }
+
+        return results;
     }
 
     /**
@@ -287,7 +243,7 @@ export class DocManager {
                             name: name.replace(/-/g, '::'),
                             type: type as SymbolType,
                             path: `${crateName}::${name.replace(/-/g, '::')}`,
-                            url: this.createRustdocUrl(path.join(docDir, file), crateName)
+                            url: RustdocUrl.create(path.join(docDir, file))
                         });
                     }
                 }

@@ -5,7 +5,6 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
-  ListResourcesRequestSchema,
   ListResourceTemplatesRequestSchema,
   ReadResourceRequestSchema,
   ErrorCode,
@@ -13,7 +12,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { DocManager } from "./doc-manager.js";
 import { DocError } from "./types.js";
-import path from "path";
+import { RustdocUrl } from "./url-utils.js";
 import fs from "fs/promises";
 
 const docManager = new DocManager();
@@ -35,41 +34,26 @@ const server = new Server(
 server.setRequestHandler(ListResourceTemplatesRequestSchema, async () => ({
   resourceTemplates: [
     {
-      uriTemplate: "rustdoc://{crate}/{file}",
+      uriTemplate: "rustdoc://{path}",
       name: "Rust documentation file",
       mimeType: "text/html",
-      description: "Access generated Rust documentation files",
+      description: "Access generated Rust documentation files using a direct file path.",
     },
   ],
 }));
 
 // Read resource content
 server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-  const match = request.params.uri.match(/^rustdoc:\/\/([^\/]+)\/(.+)$/);
-  if (!match) {
-    throw new McpError(
-      ErrorCode.InvalidRequest,
-      `Invalid rustdoc URI format: ${request.params.uri}`
-    );
-  }
-
-  const [, crateName, fileName] = match;
-
   try {
-    // 通过缓存获取文档路径
-    const cached = await docManager.getDocPath(crateName);
-    if (!cached || !cached.isBuilt) {
-      throw new McpError(
-        ErrorCode.InvalidRequest,
-        `Documentation for crate ${crateName} is not built`
-      );
-    }
-
-    const docDir = path.dirname(cached.docPath);
-    const filePath = path.join(docDir, fileName);
-
     try {
+      const filePath = RustdocUrl.parse(request.params.uri);
+
+      // Ensure file exists and is accessible
+      await fs.access(filePath);
+
+      // Read file content
       const content = await fs.readFile(filePath, "utf-8");
+
       return {
         contents: [
           {
@@ -82,7 +66,7 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
     } catch (error) {
       throw new McpError(
         ErrorCode.InvalidRequest,
-        `File not found: ${fileName} in crate ${crateName}`
+        `Unable to access documentation file: ${error instanceof Error ? error.message : String(error)}`
       );
     }
   } catch (error) {
