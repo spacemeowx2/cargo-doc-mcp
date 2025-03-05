@@ -29,8 +29,6 @@ export interface SearchOptions {
 export interface SearchResult {
     title: string;
     url: string;
-    snippet: string;
-    crateVersion?: string;
 }
 
 /**

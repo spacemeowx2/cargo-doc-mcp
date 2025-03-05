@@ -181,31 +181,38 @@ export class DocManager {
             );
         }
 
-        const { docPath } = cached;
-        const docDir = path.dirname(docPath);
+        try {
+            const { docPath } = cached;
+            const docDir = path.dirname(docPath);
+            const results: SearchResult[] = [];
 
-        const files = await fs.readdir(docDir);
-        const results: SearchResult[] = [];
-
-        for (const file of files) {
-            if (file.endsWith('.html')) {
-                const content = await fs.readFile(path.join(docDir, file), 'utf-8');
-                if (content.includes(query)) {
-                    const result: SearchResult = {
-                        title: path.basename(file, '.html'),
-                        url: RustdocUrl.create(path.join(docDir, file)),
-                        snippet: '...' // Simple fallback without proper context
-                    };
-                    results.push(result);
-
-                    if (options.limit && results.length >= options.limit) {
-                        break;
-                    }
+            // 定义搜索处理函数
+            const searchHandler = async (fileName: string, filePath: string, modulePath: string) => {
+                if (options.limit && results.length >= options.limit) {
+                    return;
                 }
-            }
-        }
 
-        return results;
+                const content = await fs.readFile(filePath, 'utf-8');
+                if (content.toLowerCase().includes(query.toLowerCase())) {
+                    const symbol = this.parseSymbolFromFile(fileName, modulePath, crateName, filePath);
+                    results.push({
+                        title: symbol ? symbol.path : path.basename(fileName, '.html'),
+                        url: RustdocUrl.create(filePath)
+                    });
+                }
+            };
+
+            // 使用通用的traverseDirectory进行搜索
+            await this.traverseDirectory(docDir, crateName, '', searchHandler);
+
+            return results.sort((a, b) => a.title.localeCompare(b.title));
+        } catch (error) {
+            throw new DocError(
+                DocErrorCode.SEARCH_FAILED,
+                'Failed to search documentation',
+                error
+            );
+        }
     }
 
     /**
@@ -214,7 +221,7 @@ export class DocManager {
     /**
      * Parse symbol information from a documentation file name
      */
-    private parseSymbolFromFile(fileName: string, modulePath: string, crateName: string, docDir: string): SymbolInfo | null {
+    private parseSymbolFromFile(fileName: string, modulePath: string, crateName: string, filePath: string): SymbolInfo | null {
         const match = fileName.match(/^(struct|enum|trait|fn|const|type|macro|mod)\.(.+)\.html$/);
         if (!match) {
             return null;
@@ -230,19 +237,26 @@ export class DocManager {
             name: symbolName,
             type: type as SymbolType,
             path: fullPath,
-            url: RustdocUrl.create(path.join(docDir, fileName))
+            url: RustdocUrl.create(filePath)
         };
     }
 
     /**
      * Recursively traverse directory to find all symbols
      */
+    /**
+     * 递归遍历文档目录
+     * @param docDir 文档目录路径
+     * @param crateName crate名称
+     * @param modulePath 当前模块路径
+     * @param fileHandler 文件处理函数，用于处理发现的HTML文件
+     */
     private async traverseDirectory(
         docDir: string,
         crateName: string,
         modulePath: string = '',
-        symbols: SymbolInfo[] = []
-    ): Promise<SymbolInfo[]> {
+        fileHandler: (fileName: string, filePath: string, modulePath: string) => Promise<void>
+    ): Promise<void> {
         const entries = await fs.readdir(docDir, { withFileTypes: true });
 
         for (const entry of entries) {
@@ -253,21 +267,20 @@ export class DocManager {
                 }
 
                 // 递归遍历子目录
+                const nextModulePath = modulePath
+                    ? `${modulePath}::${entry.name}`
+                    : entry.name;
+
                 await this.traverseDirectory(
                     path.join(docDir, entry.name),
                     crateName,
-                    modulePath ? `${modulePath}::${entry.name}` : entry.name,
-                    symbols
+                    nextModulePath,
+                    fileHandler
                 );
             } else if (entry.name.endsWith('.html') && entry.name !== 'index.html') {
-                const symbol = this.parseSymbolFromFile(entry.name, modulePath, crateName, docDir);
-                if (symbol) {
-                    symbols.push(symbol);
-                }
+                await fileHandler(entry.name, path.join(docDir, entry.name), modulePath);
             }
         }
-
-        return symbols;
     }
 
     /**
@@ -293,9 +306,18 @@ export class DocManager {
         try {
             const { docPath } = cached;
             const docDir = path.dirname(docPath);
+            const symbols: SymbolInfo[] = [];
 
-            // 使用递归遍历来收集所有符号
-            const symbols = await this.traverseDirectory(docDir, crateName);
+            // 定义符号收集处理函数
+            const symbolHandler = async (fileName: string, filePath: string, modulePath: string) => {
+                const symbol = this.parseSymbolFromFile(fileName, modulePath, crateName, filePath);
+                if (symbol) {
+                    symbols.push(symbol);
+                }
+            };
+
+            // 使用通用的traverseDirectory收集符号
+            await this.traverseDirectory(docDir, crateName, '', symbolHandler);
 
             return symbols.sort((a, b) => a.path.localeCompare(b.path));
         } catch (error) {

@@ -51,15 +51,15 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
       // Ensure file exists and is accessible
       await fs.access(filePath);
 
-      // Read file content
-      const content = await fs.readFile(filePath, "utf-8");
+      // Read and convert content to markdown
+      const markdown = await RustdocUrl.readContent(filePath);
 
       return {
         contents: [
           {
             uri: request.params.uri,
-            mimeType: "text/html",
-            text: content,
+            mimeType: "text/markdown",
+            text: markdown,
           },
         ],
       };
@@ -227,7 +227,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             },
             ...results.map((result) => ({
               type: "text" as const,
-              text: `\n- ${result.title}\n  URL: ${result.url}\n  ${result.snippet}`,
+              text: `\n- ${result.title}\n  URL: ${result.url}`,
             })),
           ],
         };

@@ -18,7 +18,9 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.6.1",
-    "execa": "^9.5.2"
+    "@types/turndown": "^5.0.5",
+    "execa": "^9.5.2",
+    "turndown": "^7.2.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.24",
