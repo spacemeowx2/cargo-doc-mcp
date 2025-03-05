@@ -93,7 +93,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {
             project_path: {
               type: "string",
-              description: "Path to the Rust project",
+              description: "Path to the Rust project (must be absolute path)",
             },
             crate_name: {
               type: "string",
@@ -116,7 +116,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {
             project_path: {
               type: "string",
-              description: "Path to the Rust project",
+              description: "Path to the Rust project (must be absolute path)",
             },
             crate_name: {
               type: "string",
@@ -134,7 +134,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {
             project_path: {
               type: "string",
-              description: "Path to the Rust project",
+              description: "Path to the Rust project (must be absolute path)",
             },
             crate_name: {
               type: "string",
