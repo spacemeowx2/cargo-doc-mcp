@@ -86,8 +86,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
       {
-        name: "build_doc",
-        description: "Build documentation for a specific crate",
+        name: "get_crate_doc",
+        description: "Get crate's main documentation page for understanding overall concepts and usage",
         inputSchema: {
           type: "object",
           properties: {
@@ -97,13 +97,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             crate_name: {
               type: "string",
-              description: "Name of the crate to build documentation for",
-            },
-            no_deps: {
-              type: "boolean",
-              description: "Whether to skip building documentation for dependencies",
-              default: false,
-            },
+              description: "Name of the crate to get documentation for",
+            }
           },
           required: ["project_path", "crate_name"],
         },
@@ -162,21 +157,19 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     switch (request.params.name) {
-      case "build_doc": {
-        const { project_path, crate_name, no_deps } = request.params
-          .arguments as {
-            project_path: string;
-            crate_name: string;
-            no_deps?: boolean;
-          };
+      case "get_crate_doc": {
+        const { project_path, crate_name } = request.params.arguments as {
+          project_path: string;
+          crate_name: string;
+        };
 
-        const docPath = await docManager.buildDoc(project_path, crate_name, no_deps);
+        const content = await docManager.getCrateDoc(project_path, crate_name);
 
         return {
           content: [
             {
               type: "text",
-              text: `Documentation built successfully. Output: ${docPath}`,
+              text: content,
             },
           ],
         };

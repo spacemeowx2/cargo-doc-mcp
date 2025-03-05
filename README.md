@@ -6,24 +6,23 @@ A MCP server for managing Rust documentation through cargo doc commands. This se
 
 ### Tools
 
-- `check_doc` - Check if documentation is built for a specific crate
+- `get_crate_doc` - Get crate's main documentation page for understanding overall concepts and usage
 
   - Parameters:
-    - `project_path`: Path to the Rust project
-    - `crate_name`: Name of the crate to check
+    - `project_path`: Path to the Rust project (must be absolute path)
+    - `crate_name`: Name of the crate to get documentation for
 
-- `build_doc` - Build documentation for a specific crate
+- `list_symbols` - List all symbols (structs, enums, traits, etc.) in a crate's documentation
 
   - Parameters:
-    - `project_path`: Path to the Rust project
-    - `crate_name`: Name of the crate to build documentation for
-    - `no_deps` (optional): Whether to skip building documentation for dependencies
+    - `project_path`: Path to the Rust project (must be absolute path)
+    - `crate_name`: Name of the crate to list symbols for
 
 - `search_doc` - Search within a crate's documentation
   - Parameters:
-    - `project_path`: Path to the Rust project
+    - `project_path`: Path to the Rust project (must be absolute path)
     - `crate_name`: Name of the crate to search in
-    - `query`: Search keyword or symbol
+    - `query`: Search query (keyword or symbol)
     - `limit` (optional): Maximum number of results to return (default: 10)
 
 ## Requirements
@@ -76,22 +75,21 @@ Add the following configuration:
 
 ## Usage Examples
 
-1. Check if documentation is built:
+1. Get crate documentation:
 
 ```typescript
-const result = await claude.useMcpTool("docs-rs-mcp", "check_doc", {
+const result = await claude.useMcpTool("docs-rs-mcp", "get_crate_doc", {
   project_path: "/path/to/rust/project",
   crate_name: "my-crate",
 });
 ```
 
-2. Build documentation:
+2. List symbols in documentation:
 
 ```typescript
-const result = await claude.useMcpTool("docs-rs-mcp", "build_doc", {
+const result = await claude.useMcpTool("docs-rs-mcp", "list_symbols", {
   project_path: "/path/to/rust/project",
   crate_name: "my-crate",
-  no_deps: true,
 });
 ```
 

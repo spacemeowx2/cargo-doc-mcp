@@ -77,8 +77,8 @@ export class DocManager {
         await this.verifyProjectPath(projectPath);
 
         const cached = await this.cache.get(projectPath, crateName);
-        if (cached) {
-            return cached.isBuilt;
+        if (cached && cached.isBuilt) {
+            return true;
         }
 
         try {
@@ -96,14 +96,9 @@ export class DocManager {
                 });
                 return true;
             } catch {
-                await this.cache.set({
-                    crateName,
-                    projectPath,
-                    docPath,
-                    lastBuildTime: Date.now(),
-                    isBuilt: false
-                });
-                return false;
+                // Document not found, trigger automatic build
+                await this.buildDoc(projectPath, crateName);
+                return true;
             }
         } catch (error) {
             throw new DocError(
@@ -169,7 +164,7 @@ export class DocManager {
         if (!isBuilt) {
             throw new DocError(
                 DocErrorCode.SEARCH_FAILED,
-                'Documentation not built. Please build the documentation first.'
+                'Failed to access documentation'
             );
         }
 
@@ -291,7 +286,7 @@ export class DocManager {
         if (!isBuilt) {
             throw new DocError(
                 DocErrorCode.SEARCH_FAILED,
-                'Documentation not built. Please build the documentation first.'
+                'Failed to access documentation'
             );
         }
 
@@ -324,6 +319,42 @@ export class DocManager {
             throw new DocError(
                 DocErrorCode.SEARCH_FAILED,
                 'Failed to list symbols',
+                error
+            );
+        }
+    }
+
+    /**
+     * Get crate's main documentation content
+     * This method automatically ensures documentation is built and returns the index page content
+     * @param projectPath Path to the Rust project
+     * @param crateName Name of the crate to get documentation for
+     * @returns Markdown formatted documentation content
+     */
+    public async getCrateDoc(projectPath: string, crateName: string): Promise<string> {
+        const isBuilt = await this.checkDoc(projectPath, crateName);
+        if (!isBuilt) {
+            throw new DocError(
+                DocErrorCode.BUILD_FAILED,
+                'Failed to build documentation'
+            );
+        }
+
+        const cached = await this.cache.get(projectPath, crateName);
+        if (!cached) {
+            throw new DocError(
+                DocErrorCode.CACHE_ERROR,
+                'Cache error: Documentation entry not found'
+            );
+        }
+
+        try {
+            const { docPath } = cached;
+            return await RustdocUrl.readContent(docPath);
+        } catch (error) {
+            throw new DocError(
+                DocErrorCode.SEARCH_FAILED,
+                'Failed to read crate documentation',
                 error
             );
         }
