@@ -211,6 +211,68 @@ export class DocManager {
     /**
      * List all symbols in a crate's documentation
      */
+    /**
+     * Parse symbol information from a documentation file name
+     */
+    private parseSymbolFromFile(fileName: string, modulePath: string, crateName: string, docDir: string): SymbolInfo | null {
+        const match = fileName.match(/^(struct|enum|trait|fn|const|type|macro|mod)\.(.+)\.html$/);
+        if (!match) {
+            return null;
+        }
+
+        const [, type, name] = match;
+        const symbolName = name.replace(/-/g, '::');
+        const fullPath = modulePath
+            ? `${crateName}::${modulePath}::${symbolName}`
+            : `${crateName}::${symbolName}`;
+
+        return {
+            name: symbolName,
+            type: type as SymbolType,
+            path: fullPath,
+            url: RustdocUrl.create(path.join(docDir, fileName))
+        };
+    }
+
+    /**
+     * Recursively traverse directory to find all symbols
+     */
+    private async traverseDirectory(
+        docDir: string,
+        crateName: string,
+        modulePath: string = '',
+        symbols: SymbolInfo[] = []
+    ): Promise<SymbolInfo[]> {
+        const entries = await fs.readdir(docDir, { withFileTypes: true });
+
+        for (const entry of entries) {
+            if (entry.isDirectory()) {
+                // 跳过特殊目录
+                if (entry.name === 'src' || entry.name === 'implementors') {
+                    continue;
+                }
+
+                // 递归遍历子目录
+                await this.traverseDirectory(
+                    path.join(docDir, entry.name),
+                    crateName,
+                    modulePath ? `${modulePath}::${entry.name}` : entry.name,
+                    symbols
+                );
+            } else if (entry.name.endsWith('.html') && entry.name !== 'index.html') {
+                const symbol = this.parseSymbolFromFile(entry.name, modulePath, crateName, docDir);
+                if (symbol) {
+                    symbols.push(symbol);
+                }
+            }
+        }
+
+        return symbols;
+    }
+
+    /**
+     * List all symbols in a crate's documentation
+     */
     public async listSymbols(projectPath: string, crateName: string): Promise<SymbolInfo[]> {
         const isBuilt = await this.checkDoc(projectPath, crateName);
         if (!isBuilt) {
@@ -231,23 +293,9 @@ export class DocManager {
         try {
             const { docPath } = cached;
             const docDir = path.dirname(docPath);
-            const files = await fs.readdir(docDir);
-            const symbols: SymbolInfo[] = [];
 
-            for (const file of files) {
-                if (file.endsWith('.html') && file !== 'index.html') {
-                    const match = file.match(/^(struct|enum|trait|fn|const|type|macro|mod)\.(.+)\.html$/);
-                    if (match) {
-                        const [, type, name] = match;
-                        symbols.push({
-                            name: name.replace(/-/g, '::'),
-                            type: type as SymbolType,
-                            path: `${crateName}::${name.replace(/-/g, '::')}`,
-                            url: RustdocUrl.create(path.join(docDir, file))
-                        });
-                    }
-                }
-            }
+            // 使用递归遍历来收集所有符号
+            const symbols = await this.traverseDirectory(docDir, crateName);
 
             return symbols.sort((a, b) => a.path.localeCompare(b.path));
         } catch (error) {
