@@ -2,6 +2,10 @@
 
 A MCP server for managing Rust documentation through cargo doc commands. This server provides tools to check, build, and search Rust documentation locally.
 
+<a href="https://glama.ai/mcp/servers/l4augy7aft">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/l4augy7aft/badge" alt="Cargo Doc Server MCP server" />
+</a>
+
 ## Features
 
 ### Tools
