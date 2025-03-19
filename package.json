@@ -4,6 +4,7 @@
   "description": "A MCP for cargo doc",
   "private": true,
   "type": "module",
+  "license": "MIT",
   "bin": {
     "docs-rs-mcp": "./build/index.js"
   },
